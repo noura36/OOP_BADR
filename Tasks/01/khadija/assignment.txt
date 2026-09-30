@@ -1,0 +1,58 @@
+Assignment 1
+
+The "Heavy Class"Myth
+
+.Explain mathematically why they are wrong.
+
+-becouse The size is the same for both struct and class because functions cost 0 bytes inside the object.
+
+.If the functions do not live inside the object in RAM, where exactly in the system's memory layout do they live?
+
+-They live in the Code / Text segment, which is a read-only area of RAM where the executable instructions reside.
+
+• How does the compiler know which specific object instance the function is modifying?
+
+-The compiler implicitly passes a hidden argument to every non-static member function call. This argument is a pointer to the invoking object, known as the this pointer.
+
+The Memory Map
+
+.int global_player_count = 0; (declared outside all functions)
+-BSS
+
+•Enemy* boss = new Enemy(); (Where does the pointer itself live? 
+-Stack
+Where does the Enemy live?)
+-Heap
+
+•The actual 50MB texture data requested via the new keyword.
+-Heap
+
+•The compiled logic for 
+void calculatePhysics();.
+-Text
+
+•int temp_score;• declared inside a while loop).
+-Stack
+
+The Cliffhanger
+what property would a language feature need, so cleanup still runs on every exit path — without you remembering a line?
+-The language feature needs deterministic destruction bound to scope lifetime, widely known in C++ as RAII (Resource Acquisition Is Initialization). When an object leaves its enclosing block scope (whether through a normal return or an exception stack unwind), its destructor is guaranteed to run automatically to free resources. In modern C++, this is achieved using smart pointers like std::unique_ptr.
+
+Code Review & Bug Hunting
+1-If a malicious user sends a request with dataSize = -5, what happens to the server's memory? 
+
+-The server will either throw a std::bad_alloc exception or crash immediately due to an Out-Of-Memory (OOM) error.
+Why?
+Becouse The memory allocation new int[dataSize] is written before the input validation check if (dataSize <= 0). The new[] operator expects an unsigned integer size argument (size_t). When the negative value -5 is implicitly cast to an unsigned integer, it wraps around to a critically large value on a 32-bit system. The system fails to allocate this impossible amount of memory, resulting in a denial-of-service (DoS) crash before the error check can ever be reached.
+To fix it :we should Move the safety check if (dataSize <= 0) to the very top of the function before calling new int[dataSize].
+
+
+2-How can a developer bypass the safety check and cause a meltdown using the existing code?
+-by fetching the pointer and modifying the value it points to directly.
+To fix it :the getter function should beReturn the value by value instead of returning a pointer:
+double getTemperature() { 
+return core_temperature;}
+or return a pointer to a constant to prevent any modification to the underlying value:
+const double* getTemperaturePointer() { 
+return &core_temperature;}
+
