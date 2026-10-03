@@ -1,6 +1,6 @@
 // g++ -std=c++17 -Wall -Wextra -Werror -g main.cpp ReadingBuffer.cpp -o main
 
-// app/main.cpp
+
 #include <iomanip>
 #include <iostream>
 #include "ReadingBuffer.h"
