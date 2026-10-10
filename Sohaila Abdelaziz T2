@@ -1,0 +1,178 @@
+/*
+================================================================================
+Assignment 2: Memory Management & C++ Object Lifecycle
+Student Name: Sohaila AbdElaziz
+Task: Session 2 (Tasks/02)
+================================================================================
+*/
+
+/*
+--------------------------------------------------------------------------------
+PART 1: ACADEMIC FORENSIC (Theoretical Answers)
+--------------------------------------------------------------------------------
+
+Q1: Snippet A vs Snippet B (Initialization Lists)
+- Snippet A creates the object with default values first, then modifies them
+  (two steps: default construction + assignment).
+- Snippet B uses the Member Initializer List directly, building the object 
+  once and efficiently. (Snippet B is the correct and professional practice).
+
+Q2: Shallow Copy vs Deep Copy & Rule of Three
+- Without a custom copy constructor, the compiler performs a shallow copy,
+  causing multiple objects to share the same heap pointer (leading to double-free crashes).
+- A Deep Copy constructor allocates independent memory for each object.
+
+Q3: Move Constructor vs Copy Constructor
+- Copy Constructor (lvalue reference): Creates a duplicates of resources (higher performance cost).
+- Move Constructor (rvalue reference): Transfers ownership of resources directly without reallocating (zero heap overhead).
+
+Q4: Memory Leaks in Modern C++
+- Occurs when dynamically allocated memory (`new`) is not explicitly freed (`delete`).
+- Prevented in modern C++ using Smart Pointers (`std::unique_ptr`, `std::shared_ptr`) or RAII wrappers.
+*/
+
+// -----------------------------------------------------------------------------
+// PART 2: ABSTRACTION LEAK DEMONSTRATION
+// -----------------------------------------------------------------------------
+
+#include <iostream>
+#include <algorithm>
+#include <utility>
+#include <cstddef>
+
+class UnsafeBuffer {
+public:
+    int* data;
+    size_t size;
+
+    UnsafeBuffer(size_t s) : size(s) {
+        data = new int[size];
+    }
+
+    ~UnsafeBuffer() {
+        delete[] data;
+    }
+};
+
+void demonstrateAbstractionLeak() {
+    std::cout << "--- Part 2: Abstraction Leak Demo ---\n";
+    UnsafeBuffer buf1(5);
+    buf1.data[0] = 100;
+
+    // Shallow copy issue demo (commented out to prevent actual runtime crash)
+    // UnsafeBuffer buf2 = buf1; 
+    std::cout << "UnsafeBuffer created successfully. (Shallow copy crash avoided)\n\n";
+}
+
+// -----------------------------------------------------------------------------
+// PART 3: INT VECTOR (RULE OF FIVE IMPLEMENTATION)
+// -----------------------------------------------------------------------------
+
+class IntVector {
+private:
+    int* data;
+    size_t capacity;
+    size_t length;
+
+    void reallocate(size_t new_capacity) {
+        int* new_data = new int[new_capacity];
+        for (size_t i = 0; i < length; ++i) {
+            new_data[i] = data[i];
+        }
+        delete[] data;
+        data = new_data;
+        capacity = new_capacity;
+    }
+
+public:
+    // 1. Default / Parameterized Constructor
+    explicit IntVector(size_t init_cap = 4) 
+        : data(new int[init_cap]), capacity(init_cap), length(0) {}
+
+    // 2. Destructor
+    ~IntVector() {
+        delete[] data;
+    }
+
+    // 3. Copy Constructor (Deep Copy)
+    IntVector(const IntVector& other) 
+        : data(new int[other.capacity]), capacity(other.capacity), length(other.length) {
+        for (size_t i = 0; i < length; ++i) {
+            data[i] = other.data[i];
+        }
+    }
+
+    // 4. Copy Assignment Operator (Copy-and-Swap Idiom)
+    IntVector& operator=(const IntVector& other) {
+        if (this != &other) {
+            IntVector temp(other);
+            std::swap(data, temp.data);
+            std::swap(capacity, temp.capacity);
+            std::swap(length, temp.length);
+        }
+        return *this;
+    }
+
+    // 5. Move Constructor
+    IntVector(IntVector&& other) noexcept 
+        : data(other.data), capacity(other.capacity), length(other.length) {
+        other.data = nullptr;
+        other.capacity = 0;
+        other.length = 0;
+    }
+
+    // 6. Move Assignment Operator
+    IntVector& operator=(IntVector&& other) noexcept {
+        if (this != &other) {
+            delete[] data;
+            data = other.data;
+            capacity = other.capacity;
+            length = other.length;
+
+            other.data = nullptr;
+            other.capacity = 0;
+            other.length = 0;
+        }
+        return *this;
+    }
+
+    void push_back(int value) {
+        if (length == capacity) {
+            reallocate(capacity == 0 ? 1 : capacity * 2);
+        }
+        data[length++] = value;
+    }
+
+    size_t size() const { return length; }
+    size_t get_capacity() const { return capacity; }
+
+    int& operator[](size_t index) { return data[index]; }
+    const int& operator[](size_t index) const { return data[index]; }
+};
+
+int main() {
+    demonstrateAbstractionLeak();
+
+    std::cout << "--- Part 3: Testing IntVector (Rule of Five) ---\n";
+    IntVector vec;
+    vec.push_back(10);
+    vec.push_back(20);
+    vec.push_back(30);
+
+    std::cout << "Vector Size: " << vec.size() << "\n";
+    std::cout << "Vector Elements: ";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        std::cout << vec[i] << " ";
+    }
+    std::cout << "\n\nTesting Copy Constructor:\n";
+    IntVector vec_copy = vec;
+    std::cout << "Copy Size: " << vec_copy.size() << "\n";
+
+    std::cout << "\nTesting Move Constructor:\n";
+    IntVector vec_moved = std::move(vec);
+    std::cout << "Moved Size: " << vec_moved.size() << "\n";
+    std::cout << "Original Size after Move: " << vec.size() << "\n";
+
+    std::cout << "\nAll Assignment 2 tasks completed successfully!\n";
+    return 0;
+}
